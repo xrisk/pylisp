@@ -55,7 +55,8 @@ class AddOp(Proc):
     def __init__(self):
         pass
 
-    def apply(self, x, y):
+    def apply(self, env, *args):
+        x, y = args
         assert isinstance(x, Int)
         assert isinstance(y, Int)
         return Int(x.val + y.val)
@@ -81,8 +82,8 @@ class S(A):
         valuated = []
         for arg in self.body:
             valuated.append(arg.eval(env))
-        assert isinstance(valuated[0], Callable), f"{valuated[0]} is not callable!"
-        return valuated[0].apply(*valuated[1:])
+        assert isinstance(valuated[0], Proc), f"{valuated[0]} is not callable!"
+        return valuated[0].apply(env, *valuated[1:])
 
 
 class Let(S):
@@ -103,11 +104,8 @@ class Lambda(S):
         self.body = body
 
     def eval(self, env, *args):
-        assert self.names == len(args)
-        env = env.copy()
-        for name, value in zip(self.names, args):
-            env.extend(name, value)
-        return self.body.eval(env)
+        ret = Proc(self.names, self.body)
+        return ret
 
 
 class Env:
@@ -118,6 +116,7 @@ class Env:
             self.kv = {}
 
     def extend(self, key, value):
+        # print(f"extend {key}")
         self.kv[key] = value
 
     def __getitem__(self, val):
@@ -131,10 +130,12 @@ class Env:
 
 env = Env()
 
-test1 = Let(S(S(Id("x"), Int(5))), Id("x"))
+# test1 = Let(S(S(Id("x"), Int(5))), Id("x"))
 
 
-test2 = Let(S(S(Id("x"), Int(5)), S(Id("y"), Int(2))), S(AddOp(), Id("y"), Id("x")))
+# test2 = Let(S(S(Id("x"), Int(5)), S(Id("y"), Int(2))), S(AddOp(), Id("y"), Id("x")))
+
+test1 = S(Lambda(S(Id("x")), S(AddOp(), Int(2), Id("x"))), Int(2))
 
 # test3
 
