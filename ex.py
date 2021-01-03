@@ -2,22 +2,31 @@
 
 from __future__ import annotations
 from typing import Any, List, Union
+import abc
 
 
-class A:
-    def eval(self, env):
+class Valable(abc.ABC):
+    def eval(self, env: Env) -> Union[S, A]:
+        pass
+
+
+class A(Valable):
+    def eval(self, env: Env) -> Union[S, A]:
         return self
-        # raise Exception("Not implemented!", type(self))
+
+
+class Void(A):
+    def __str__(self):
+        return "void"
 
 
 class Proc(A):
-    def __init__(self, env, names, body):
+    def __init__(self, env: Env, names: S, body: Union[S, A]):
         self.env = env
         self.names = names
         self.body = body
 
-    def apply(self, env, *args):
-        # print(env)
+    def apply(self, env: Env, *args) -> Union[S, A]:
         new_env = self.env.copy()
         for n, v in env.kv.items():
             new_env.extend(n, v)
@@ -27,19 +36,21 @@ class Proc(A):
 
 
 class Id(A):
-    def __init__(self, v):
+    def __init__(self, v: str):
         self.name = v
 
-    def __eq__(self, other):
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, Id):
+            return NotImplemented
         return self.name == other.name
 
     def __hash__(self):
         return hash(self.name)
 
-    def eval(self, env):
+    def eval(self, env: Env) -> Union[S, A]:
         return env[self]
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"{self.name}"
 
 
@@ -47,7 +58,7 @@ class Int(A):
     def __init__(self, v: int):
         self.val = v
 
-    def __str__(self):
+    def __str__(self) -> str:
         return str(self.val)
 
 
@@ -55,40 +66,40 @@ class StringLiteral(A):
     pass
 
 
+class Print(Proc):
+    def apply(self, env: Env, *args):
+        print(args[0])
+
+
 class AddOp(Proc):
     def __init__(self):
         pass
 
-    def __str__(self):
+    def __str__(self) -> str:
         return "+"
 
-    def apply(self, env, *args):
+    def apply(self, env: Env, *args: Union[S, A]) -> Union[S, A]:
         x, y = args
         assert isinstance(x, Int)
         assert isinstance(y, Int)
         return Int(x.val + y.val)
 
 
-class S(A):
-    def __init__(self, *body):
-        self.body = body
+class S:
+    def __init__(self, *body: Union[S, A]):
+        self.body = list(body)
 
     def __getitem__(self, idx):
         return self.body[idx]
 
     def __iter__(self):
-        if isinstance(self.body, A):
-            yield self.body
-        else:
-            for item in self.body:
-                yield item
+        for item in self.body:
+            yield item
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"({' '.join(str(x) for x in self.body)})"
 
-    def eval(self, env: Env):
-        if isinstance(self.body, A):
-            return self.body
+    def eval(self, env: Env) -> Union[S, A]:
         valuated = []
         for arg in self.body:
             valuated.append(arg.eval(env))
@@ -97,30 +108,31 @@ class S(A):
 
 
 class Let(S):
-    def __init__(self, binds, body):
+    def __init__(self, binds: S, body: Union[S, A]):
         self.binds = binds
-        self.body = body
+        self.scope: Union[S, A] = body
 
-    def eval(self, env):
+    def eval(self, env) -> Union[S, A]:
         ext = env.copy()
         for b in self.binds:
+            assert isinstance(b, S)
             ext.extend(b[0], b[1].eval(env))
-        return self.body.eval(ext)
+        return self.scope.eval(ext)
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"(let {self.binds} {self.body})"
 
 
 class Lambda(S):
-    def __init__(self, names, body):
+    def __init__(self, names: S, body: Union[S, A]):
         self.names = names
-        self.body = body
+        self.func = body
 
-    def eval(self, env, *args):
-        ret = Proc(env, self.names, self.body)
+    def eval(self, env, *args) -> Union[S, A]:
+        ret = Proc(env, self.names, self.func)
         return ret
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"(lambda {self.names} {self.body})"
 
 
@@ -165,6 +177,8 @@ env = Env()
 test1 = S(
     Let(S(S(Id("x"), Int(5))), Lambda(S(Id("z")), S(AddOp(), Id("x"), Id("z")))), Int(3)
 )
+
+# test1 = Let(S(S(Id("x", 200))), Let(S(
 
 print("input ast:", test1)
 
