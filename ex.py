@@ -7,7 +7,7 @@ import abc
 
 class Valable(abc.ABC):
     def eval(self, env: Env) -> Union[S, A]:
-        pass
+        raise Exception("not implemented!")
 
 
 class A(Valable):
