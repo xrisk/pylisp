@@ -10,9 +10,16 @@ class A:
         # raise Exception("Not implemented!", type(self))
 
 
-class Callable(A):
-    def apply(self, env):
-        raise Exception("not implemented!")
+class Proc(A):
+    def __init__(self, names, body):
+        self.names = names
+        self.body = body
+
+    def apply(self, env, *args):
+        new_env = env.copy()
+        for n, v in zip(self.names, args):
+            new_env.extend(n, v)
+        return self.body.eval(new_env)
 
 
 class Id(A):
@@ -44,7 +51,7 @@ class StringLiteral(A):
     pass
 
 
-class AddOp(Callable):
+class AddOp(Proc):
     def __init__(self):
         pass
 
@@ -52,48 +59,6 @@ class AddOp(Callable):
         assert isinstance(x, Int)
         assert isinstance(y, Int)
         return Int(x.val + y.val)
-
-
-class Let(Callable):
-    def __init__(self, binds, body):
-        self.binds = binds
-        self.body = body
-
-    def eval(self, env):
-        ext = env.copy()
-        for b in self.binds:
-            ext.extend(b[0], b[1].eval(env))
-        return self.body.eval(ext)
-
-
-class Lambda(Callable):
-    def __init(self, names, body):
-        self.names = names
-        self.body = body
-
-    def apply(self, env, *args):
-        assert self.names == len(args)
-        env = env.copy()
-        for name, value in zip(self.names, args):
-            env.extend(name, value)
-        return self.body.eval(env)
-
-
-class Env:
-    def __init__(self, kv=None):
-        if kv:
-            self.kv = kv.clone()
-        else:
-            self.kv = {}
-
-    def extend(self, key, value):
-        self.kv[key] = value
-
-    def __getitem__(self, val):
-        return self.kv[val]
-
-    def copy(self):
-        return Env(self.kv)
 
 
 class S(A):
@@ -120,6 +85,48 @@ class S(A):
         return valuated[0].apply(*valuated[1:])
 
 
+class Let(S):
+    def __init__(self, binds, body):
+        self.binds = binds
+        self.body = body
+
+    def eval(self, env):
+        ext = env.copy()
+        for b in self.binds:
+            ext.extend(b[0], b[1].eval(env))
+        return self.body.eval(ext)
+
+
+class Lambda(S):
+    def __init__(self, names, body):
+        self.names = names
+        self.body = body
+
+    def eval(self, env, *args):
+        assert self.names == len(args)
+        env = env.copy()
+        for name, value in zip(self.names, args):
+            env.extend(name, value)
+        return self.body.eval(env)
+
+
+class Env:
+    def __init__(self, kv=None):
+        if kv:
+            self.kv = kv.clone()
+        else:
+            self.kv = {}
+
+    def extend(self, key, value):
+        self.kv[key] = value
+
+    def __getitem__(self, val):
+        return self.kv[val]
+
+    def copy(self):
+        return Env(self.kv)
+
+
 #   ((lambda (x) (lambda (x) x)) 5)
 
 env = Env()
@@ -129,6 +136,6 @@ test1 = Let(S(S(Id("x"), Int(5))), Id("x"))
 
 test2 = Let(S(S(Id("x"), Int(5)), S(Id("y"), Int(2))), S(AddOp(), Id("y"), Id("x")))
 
-test3
+# test3
 
-print(test2.eval(env))
+print(test1.eval(env))
