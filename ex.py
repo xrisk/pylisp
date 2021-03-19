@@ -1,7 +1,7 @@
 # S := A | [S]
 
 from __future__ import annotations
-from typing import Any, List, Union
+from typing import Any, List, Union, Iterable
 import abc
 
 
@@ -16,7 +16,7 @@ class A(Valable):
 
 
 class Void(A):
-    def __str__(self):
+    def __str__(self) -> str:
         return "void"
 
 
@@ -26,7 +26,7 @@ class Proc(A):
         self.names = names
         self.body = body
 
-    def apply(self, env: Env, *args) -> Union[S, A]:
+    def apply(self, env: Env, *args: Union[S, A]) -> Union[S, A]:
         new_env = self.env.copy()
         for n, v in env.kv.items():
             new_env.extend(n, v)
@@ -44,7 +44,7 @@ class Id(A):
             return NotImplemented
         return self.name == other.name
 
-    def __hash__(self):
+    def __hash__(self) -> int:
         return hash(self.name)
 
     def eval(self, env: Env) -> Union[S, A]:
@@ -66,13 +66,13 @@ class StringLiteral(A):
     pass
 
 
-class Print(Proc):
-    def apply(self, env: Env, *args):
-        print(args[0])
+# class Print(Proc):
+#     def apply(self, env: Env, *args) -> :
+#         print(args[0])
 
 
 class AddOp(Proc):
-    def __init__(self):
+    def __init__(self) -> None:
         pass
 
     def __str__(self) -> str:
@@ -85,14 +85,14 @@ class AddOp(Proc):
         return Int(x.val + y.val)
 
 
-class S:
+class S(Iterable[Union[S, A]]):
     def __init__(self, *body: Union[S, A]):
         self.body = list(body)
 
-    def __getitem__(self, idx):
+    def __getitem__(self, idx) -> Union[S, A]:
         return self.body[idx]
 
-    def __iter__(self):
+    def __iter__(self) -> Iterable[Union[S, A]]:
         for item in self.body:
             yield item
 
@@ -120,7 +120,7 @@ class Let(S):
         return self.scope.eval(ext)
 
     def __str__(self) -> str:
-        return f"(let {self.binds} {self.body})"
+        return f"(let {self.binds} {self.scope})"
 
 
 class Lambda(S):
@@ -133,17 +133,17 @@ class Lambda(S):
         return ret
 
     def __str__(self) -> str:
-        return f"(lambda {self.names} {self.body})"
+        return f"(lambda {self.names} {self.func})"
 
 
 class Env:
-    def __init__(self, kv=None):
+    def __init__(self, kv=None) -> None:
         if kv:
             self.kv = kv.copy()
         else:
             self.kv = {}
 
-    def extend(self, key, value):
+    def extend(self, key, value) -> None:
         # print(f"extend {key}")
         self.kv[key] = value
 
@@ -154,10 +154,10 @@ class Env:
             print(f"{val} not found")
             raise
 
-    def copy(self):
+    def copy(self) -> Env:
         return Env(self.kv)
 
-    def __str__(self):
+    def __str__(self) -> str:
         return str(self.kv)
 
 
